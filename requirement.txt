@@ -1,3 +1,6 @@
+# UI Framework
+streamlit
+
 # LLM Orchestration & Framework
 langchain
 langchain-core
