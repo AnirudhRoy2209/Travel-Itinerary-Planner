@@ -9,8 +9,11 @@ from tools import web_search, scrape_page
 load_dotenv()
 
 
-def get_llm():
-    """Initialize the LLM dynamically at runtime so sidebar API keys work."""
+def get_llm(model_size: str = "large"):
+    """
+    Use separate Groq models for tool steps vs final generation so they don't 
+    share the same 8,000 TPM bucket, and set max_retries=5 to auto-wait on short 429s.
+    """
     provider = os.getenv("LLM_PROVIDER", "Groq")
 
     if provider == "Google (Gemini)" and os.getenv("GOOGLE_API_KEY"):
@@ -18,6 +21,7 @@ def get_llm():
         return ChatGoogleGenerativeAI(
             model="gemini-2.5-flash",
             temperature=0,
+            max_retries=5,
             api_key=os.getenv("GOOGLE_API_KEY"),
         )
     elif provider == "OpenAI" and os.getenv("OPENAI_API_KEY"):
@@ -25,6 +29,7 @@ def get_llm():
         return ChatOpenAI(
             model="gpt-4o-mini",
             temperature=0,
+            max_retries=5,
             api_key=os.getenv("OPENAI_API_KEY"),
         )
     elif provider == "Anthropic (Claude)" and os.getenv("ANTHROPIC_API_KEY"):
@@ -32,6 +37,7 @@ def get_llm():
         return ChatAnthropic(
             model="claude-3-5-haiku-latest",
             temperature=0,
+            max_retries=5,
             api_key=os.getenv("ANTHROPIC_API_KEY"),
         )
 
@@ -40,35 +46,37 @@ def get_llm():
     if not api_key:
         raise ValueError("Missing Groq API Key! Please paste your GROQ_API_KEY in the sidebar.")
 
+    # Split across two models so each gets its own separate 8,000 TPM quota!
+    groq_model = "openai/gpt-oss-20b" if model_size == "small" else "openai/gpt-oss-120b"
+
     return ChatGroq(
-        model="openai/gpt-oss-120b",
+        model=groq_model,
         temperature=0,
+        max_retries=5,
         api_key=api_key,
     )
 
 
 def built_search_agent():
     return create_agent(
-        model=get_llm(),
+        model=get_llm("small"),
         tools=[web_search],
         system_prompt=(
-            "You are a dedicated travel search specialist. Your job is to take a destination "
-            "and user preferences, formulate effective search queries, and use the web_search "
-            "tool to find high-quality, relevant webpage URLs containing attractions, activities, "
-            "and local events. Always return the relevant URLs you find with brief context on what each link covers."
+            "You are a dedicated travel search specialist. Formulate a single concise search query "
+            "and use the web_search tool once to find relevant URLs for attractions and activities. "
+            "Return only the URLs found."
         ),
     )
 
 
 def built_scrape_page():
     return create_agent(
-        model=get_llm(),
+        model=get_llm("small"),
         tools=[scrape_page],
         system_prompt=(
-            "You are a content extraction specialist. Your task is to use the scrape_page tool "
-            "on provided URLs to extract verified, detailed travel information including attraction "
-            "names, locations, timings, ticket costs, and seasonal events. Filter out navigation "
-            "elements, ads, and irrelevant filler, returning only clean, structured factual notes."
+            "You are a content extraction specialist. Use the scrape_page tool on at most 2 URLs "
+            "to extract concise travel details (attractions, timings, costs, food). "
+            "Return brief, structured bullet points under 400 words."
         ),
     )
 
@@ -96,4 +104,5 @@ itinery_prompt = ChatPromptTemplate.from_messages([
 
 
 def built_itinery_chain():
-    return itinery_prompt | get_llm() | StrOutputParser()
+    # Uses the fresh 120b model bucket for the final itinerary
+    return itinery_prompt | get_llm("large") | StrOutputParser()
