@@ -3,6 +3,14 @@ import os
 import streamlit as st
 from pipeline import generate_itinary
 
+# Load Streamlit Cloud secrets into os.environ if present
+try:
+    for k in ("GROQ_API_KEY", "GOOGLE_API_KEY", "OPENAI_API_KEY", "ANTHROPIC_API_KEY", "TAVILY_API_KEY", "SERPER_API_KEY"):
+        if k in st.secrets and k not in os.environ:
+            os.environ[k] = str(st.secrets[k])
+except Exception:
+    pass
+
 # ============================================================
 # Page Configuration
 # ============================================================
@@ -30,15 +38,33 @@ st.markdown("""
         --muted: #6b7a78;
         --card: #ffffff;
         --border: #e7e2d6;
+        color-scheme: light !important;
     }
 
     .stApp {
-        background: var(--sand);
-        color: var(--ink);
+        background: var(--sand) !important;
+        color: var(--ink) !important;
         font-family: 'Plus Jakarta Sans', sans-serif;
     }
 
-    #MainMenu, footer, header {visibility: hidden;}
+    /* Hide menu & footer, but KEEP header visible so the sidebar expand/collapse button works! */
+    #MainMenu, footer {visibility: hidden;}
+    header[data-testid="stHeader"] {
+        background: transparent !important;
+    }
+    /* Style the sidebar open/close toggle buttons so they are always easy to see */
+    button[data-testid="stExpandSidebarButton"],
+    [data-testid="collapsedControl"] button {
+        background-color: var(--teal-deep) !important;
+        color: #ffffff !important;
+        border-radius: 8px !important;
+        box-shadow: 0 4px 12px rgba(10, 79, 74, 0.25) !important;
+    }
+    button[data-testid="stExpandSidebarButton"] svg,
+    [data-testid="collapsedControl"] svg {
+        fill: #ffffff !important;
+        color: #ffffff !important;
+    }
 
     h1, h2, h3 {
         font-family: 'Fraunces', Georgia, serif !important;
@@ -64,7 +90,7 @@ st.markdown("""
         font-size: 0.75rem;
         letter-spacing: 2px;
         text-transform: uppercase;
-        color: var(--coral-deep);
+        color: var(--coral-deep) !important;
         background: rgba(255, 107, 91, 0.12);
         border: 1px solid rgba(255, 107, 91, 0.3);
         padding: 4px 14px;
@@ -74,13 +100,15 @@ st.markdown("""
     }
 
     .hero-title {
+        font-family: 'Fraunces', Georgia, serif;
+        color: var(--teal-deep) !important;
         font-size: 3rem;
         font-weight: 900;
         margin-bottom: 0.4rem;
     }
 
     .hero-subtitle {
-        color: var(--muted);
+        color: var(--muted) !important;
         font-size: 1.05rem;
         max-width: 600px;
         margin: 0 auto;
@@ -92,11 +120,11 @@ st.markdown("""
         font-family: 'Fraunces', serif;
         font-weight: 700;
         font-size: 1.25rem;
-        color: var(--teal-deep);
+        color: var(--teal-deep) !important;
         margin-bottom: 0.2rem;
     }
     .section-hint {
-        color: var(--muted);
+        color: var(--muted) !important;
         font-size: 0.85rem;
         margin-bottom: 1rem;
     }
@@ -112,9 +140,13 @@ st.markdown("""
         background-color: var(--card) !important;
         border: 1.5px solid var(--border) !important;
         color: var(--ink) !important;
+        caret-color: var(--coral-deep) !important;
         border-radius: 10px !important;
         font-size: 0.95rem;
         transition: all 0.2s ease-in-out;
+    }
+    .stTextInput input::placeholder, .stTextArea textarea::placeholder {
+        color: #94a3a1 !important;
     }
 
     .stTextInput input:focus, .stTextArea textarea:focus {
@@ -141,33 +173,40 @@ st.markdown("""
         transform: translateY(-1px);
     }
 
-    /* ---------- Output Card ---------- */
-    .output-card {
-        background-color: var(--card);
-        border: 1px solid var(--border);
-        border-left: 5px solid var(--teal);
-        border-radius: 14px;
-        padding: 2rem;
-        margin-top: 1.5rem;
+    /* ---------- Output Container ---------- */
+    div[data-testid="stVerticalBlockBorderWrapper"] {
+        background-color: var(--card) !important;
+        border: 1px solid var(--border) !important;
+        border-left: 5px solid var(--teal) !important;
+        border-radius: 14px !important;
+        padding: 1.2rem !important;
         box-shadow: 0 12px 28px -10px rgba(15, 118, 110, 0.18);
+    }
+    div[data-testid="stVerticalBlockBorderWrapper"] p,
+    div[data-testid="stVerticalBlockBorderWrapper"] li,
+    div[data-testid="stVerticalBlockBorderWrapper"] span {
+        color: var(--ink) !important;
     }
 
     /* ---------- Sidebar ---------- */
     section[data-testid="stSidebar"] {
-        background: var(--teal-deep);
+        background: var(--teal-deep) !important;
     }
-    section[data-testid="stSidebar"] * {
-        color: #eafaf6 !important;
+    section[data-testid="stSidebar"] label,
+    section[data-testid="stSidebar"] p,
+    section[data-testid="stSidebar"] span,
+    section[data-testid="stSidebar"] div {
+        color: #eafaf6;
     }
     section[data-testid="stSidebar"] .stTextInput input,
-    section[data-testid="stSidebar"] .stSelectbox > div {
-        background-color: rgba(255,255,255,0.08) !important;
-        border: 1px solid rgba(255,255,255,0.18) !important;
+    section[data-testid="stSidebar"] div[data-baseweb="select"] > div {
+        background-color: rgba(255,255,255,0.1) !important;
+        border: 1px solid rgba(255,255,255,0.22) !important;
         color: #ffffff !important;
         border-radius: 9px !important;
     }
     section[data-testid="stSidebar"] .stTextInput input::placeholder {
-        color: rgba(234,250,246,0.45) !important;
+        color: rgba(234,250,246,0.55) !important;
     }
     .sidebar-brand {
         display: flex;
@@ -186,7 +225,7 @@ st.markdown("""
     }
     .sidebar-note {
         font-size: 0.78rem;
-        color: rgba(234,250,246,0.65) !important;
+        color: rgba(234,250,246,0.7) !important;
         line-height: 1.5;
         margin-top: 0.3rem;
     }
@@ -235,7 +274,7 @@ with st.sidebar:
 
     key_provider = st.selectbox(
         "Provider",
-        ["OpenAI", "Anthropic (Claude)", "Google (Gemini)", "Groq"],
+        ["Groq", "Google (Gemini)", "OpenAI", "Anthropic (Claude)"],
         label_visibility="collapsed",
     )
 
@@ -247,15 +286,17 @@ with st.sidebar:
         key="byo_api_key",
     )
 
+    env_var_map = {
+        "Groq": "GROQ_API_KEY",
+        "Google (Gemini)": "GOOGLE_API_KEY",
+        "OpenAI": "OPENAI_API_KEY",
+        "Anthropic (Claude)": "ANTHROPIC_API_KEY",
+    }
+
+    os.environ["LLM_PROVIDER"] = key_provider
+
     if user_api_key:
-        # Make the key available to the pipeline without logging it anywhere.
-        env_var_map = {
-            "OpenAI": "OPENAI_API_KEY",
-            "Anthropic (Claude)": "ANTHROPIC_API_KEY",
-            "Google (Gemini)": "GOOGLE_API_KEY",
-            "Groq": "GROQ_API_KEY",
-        }
-        os.environ[env_var_map[key_provider]] = user_api_key
+        os.environ[env_var_map[key_provider]] = user_api_key.strip()
         st.session_state["using_own_key"] = True
         st.markdown(
             "<span class='key-pill active'><span class='key-dot'></span>Using your key</span>",
@@ -337,9 +378,8 @@ with col2:
 
                     status.update(label="✨ Your trip is ready!", state="complete", expanded=False)
 
-                    st.markdown(f'<div class="output-card">', unsafe_allow_html=True)
-                    st.markdown(itinerary_result)
-                    st.markdown('</div>', unsafe_allow_html=True)
+                    with st.container(border=True):
+                        st.markdown(itinerary_result)
 
                 except Exception as err:
                     status.update(label="❌ Something went sideways", state="error")

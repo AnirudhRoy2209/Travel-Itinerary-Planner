@@ -1,31 +1,32 @@
 from dotenv import load_dotenv
-from agent import built_scrape_page, built_search_agent, itinery_chain
+from agent import built_scrape_page, built_search_agent, built_itinery_chain
+
 load_dotenv()
 
-def generate_itinary(destination:str, duration:str, preferences:str)->str:
-    search=built_search_agent()
 
-    search_result=search.invoke({
-        "messages":[("user", f"Search for top attractions and activities in {destination} for a {duration} trip.")]
+def generate_itinary(destination: str, duration: str, preferences: str) -> str:
+    search = built_search_agent()
+
+    search_result = search.invoke({
+        "messages": [("user", f"Search for top attractions and activities in {destination} for a {duration} trip.")]
     })
 
-    search_text=search_result["messages"][-1].content
+    search_text = search_result["messages"][-1].content
 
-    scrape=built_scrape_page()
+    scrape = built_scrape_page()
 
-    scrape_result=scrape.invoke({
-        "messages":[("user", f"scrape me the details of the {destination} and details over the {preferences} within the {duration} from the {search_text}" )]
+    scrape_result = scrape.invoke({
+        "messages": [("user", f"scrape me the details of the {destination} and details over the {preferences} within the {duration} from the {search_text}")]
     })
 
-    scrape_text=scrape_result["messages"][-1].content
+    scrape_text = scrape_result["messages"][-1].content
 
-
-
-    itinary=itinery_chain.invoke({
-        "destination":destination,
+    itinery_chain = built_itinery_chain()
+    itinary = itinery_chain.invoke({
+        "destination": destination,
         "duration": duration,
         "preferences": preferences,
-        "extracted_facts": scrape_text
+        "extracted_facts": scrape_text,
     })
 
     return itinary
@@ -37,12 +38,12 @@ if __name__ == "__main__":
     preferences = input("Enter your preferences & budget (e.g., 'street food, historical sites, budget'): ")
 
     print("\n[+] Gathering recommendations and building your itinerary...\n")
-    
+
     result = generate_itinary(
         destination=destination,
         duration=duration,
-        preferences=preferences
+        preferences=preferences,
     )
-    
+
     print("\n--- Final Generated Itinerary ---\n")
     print(result)
