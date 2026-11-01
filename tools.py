@@ -57,4 +57,4 @@ def scrape_page(url: str) -> str:
 
     text = soup.get_text(separator=" ", strip=True)
     # Cap text length so huge web pages don't blow past Groq's TPM limit
-    return text[:4000]
+    return text[:1800]
